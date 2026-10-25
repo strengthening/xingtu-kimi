@@ -110,6 +110,13 @@ button:disabled {
   letter-spacing: 0.18em;
   text-transform: uppercase;
 }
+.sky-label.constellation.chinese {
+  color: rgba(194, 169, 128, 0.64);
+}
+.sky-label.constellation.mansion {
+  color: rgba(213, 188, 143, 0.82);
+  letter-spacing: 0.1em;
+}
 .sky-label.cardinal {
   transform: translate(-50%, -50%);
   color: rgba(167, 205, 217, 0.76);

@@ -7,6 +7,7 @@ import { stereographicScale } from '../astro/projection.ts';
 import type { Vec3 } from '../astro/math.ts';
 import type { StarCatalog } from '../data/star-catalog.ts';
 import { createSkyUniforms } from './sky-uniforms.ts';
+import { ConstellationLayer } from './constellation-layer.ts';
 import { EnvironmentLayer } from './environment-layer.ts';
 import { SkyBackgroundLayer } from './sky-background-layer.ts';
 import { SolarSystemLayer } from './solar-system-layer.ts';
@@ -19,6 +20,7 @@ export class SkyRenderer {
   readonly view: ViewController;
   readonly stars: StarLayer;
   readonly environment: EnvironmentLayer;
+  readonly constellations: ConstellationLayer;
   readonly background: SkyBackgroundLayer;
   readonly solarSystem: SolarSystemLayer;
   readonly uniforms = createSkyUniforms();
@@ -46,12 +48,14 @@ export class SkyRenderer {
     this.view = new ViewController(canvas);
     this.stars = new StarLayer(catalog, this.uniforms, this.view);
     this.environment = new EnvironmentLayer(this.uniforms);
+    this.constellations = new ConstellationLayer(this.uniforms);
     this.background = new SkyBackgroundLayer(this.uniforms);
     this.solarSystem = new SolarSystemLayer(this.uniforms);
     this.scene.add(
       this.background.mesh,
       this.environment.group,
       this.stars.group,
+      this.constellations.group,
       this.solarSystem.mesh,
     );
     this.resizeObserver = new ResizeObserver(this.resize);
@@ -98,6 +102,7 @@ export class SkyRenderer {
     this.view.dispose();
     this.stars.dispose();
     this.environment.dispose();
+    this.constellations.dispose();
     this.solarSystem.dispose();
     this.background.dispose();
     this.canvas.removeEventListener('webglcontextlost', this.contextLost);

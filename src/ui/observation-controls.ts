@@ -44,6 +44,8 @@ export class ObservationControls {
     this.playToggle.addEventListener('click', this.playChanged);
     this.rateSelect.addEventListener('change', this.rateChanged);
     this.nowButton.addEventListener('click', this.nowChanged);
+    this.rateSelect.value = String(this.clock.rate);
+    this.syncPlayState();
     this.update();
   }
 

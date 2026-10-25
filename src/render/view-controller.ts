@@ -209,6 +209,12 @@ export class ViewController {
   };
 
   private readonly keyDown = (event: KeyboardEvent): void => {
+    if (event.key === 'Enter') {
+      const bounds = this.canvas.getBoundingClientRect();
+      this.onClick?.(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2);
+      event.preventDefault();
+      return;
+    }
     const step = Math.max(0.3, this.fov / 20);
     if (event.key === 'ArrowLeft') this.azimuth -= step;
     else if (event.key === 'ArrowRight') this.azimuth += step;
