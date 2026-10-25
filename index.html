@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#060a12" />
+    <meta
+      name="description"
+      content="星图 Xingtu：在浏览器中探索真实星表、日月行星、中国星官与银河。"
+    />
+    <title>星图 · Xingtu</title>
+  </head>
+  <body>
+    <main id="app">
+      <canvas id="sky-canvas" tabindex="0" aria-label="可拖拽和缩放的交互式星图"></canvas>
+      <div class="sky-vignette" aria-hidden="true"></div>
+      <div id="labels" class="labels" aria-hidden="true"></div>
+      <div id="selection-marker" class="selection-marker" hidden aria-hidden="true"></div>
+
+      <header class="topbar">
+        <a class="brand" href="./" aria-label="星图首页">
+          <svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true">
+            <circle cx="20" cy="20" r="14.5"></circle>
+            <path d="M5 24c9-1 20-8 28-17M10 31c8-5 15-13 19-23"></path>
+            <circle class="brand-star" cx="26.5" cy="11.5" r="2.2"></circle>
+            <circle class="brand-star small" cx="12" cy="24" r="1.2"></circle>
+          </svg>
+          <span><strong>星图</strong><small>XINGTU</small></span>
+        </a>
+        <div id="sky-status" class="sky-status" role="status">
+          <span class="status-dot"></span><span id="status-text">准备观测</span>
+        </div>
+        <div class="top-actions">
+          <button
+            id="share-button"
+            class="button button-quiet"
+            type="button"
+            title="复制当前视角和时间链接"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1.1 1.1M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1.1-1.1"
+              ></path>
+            </svg>
+            <span>分享视角</span>
+          </button>
+          <button
+            id="panel-toggle"
+            class="icon-button panel-toggle"
+            type="button"
+            aria-controls="control-panel"
+            aria-expanded="true"
+            title="打开或关闭观测设置"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 6h16M4 12h16M4 18h16"></path>
+              <circle cx="9" cy="6" r="2"></circle>
+              <circle cx="15" cy="12" r="2"></circle>
+              <circle cx="8" cy="18" r="2"></circle>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <aside id="control-panel" class="control-panel" aria-label="观测设置">
+        <div class="panel-heading">
+          <div>
+            <span class="eyebrow">OBSERVATORY</span>
+            <h1>观测设置</h1>
+          </div>
+          <button id="reset-view" class="text-button" type="button">复位视角</button>
+        </div>
+
+        <section class="control-section">
+          <h2><span class="section-index">01</span>观测者</h2>
+          <label class="field-label" for="location-select">地点</label>
+          <div class="select-wrap">
+            <select id="location-select" aria-label="观测地点"></select>
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4"></path></svg>
+          </div>
+          <div class="field-row">
+            <label
+              ><span>纬度</span
+              ><span class="input-with-unit"
+                ><input
+                  id="latitude-input"
+                  type="number"
+                  min="-90"
+                  max="90"
+                  step="0.01"
+                  value="31.23"
+                /><span>°</span></span
+              ></label
+            >
+            <label
+              ><span>经度</span
+              ><span class="input-with-unit"
+                ><input
+                  id="longitude-input"
+                  type="number"
+                  min="-180"
+                  max="180"
+                  step="0.01"
+                  value="121.47"
+                /><span>°</span></span
+              ></label
+            >
+          </div>
+          <p class="field-hint">经度向东为正，默认中国上海</p>
+        </section>
+
+        <section class="control-section">
+          <h2><span class="section-index">02</span>时间流速</h2>
+          <label class="field-label" for="time-input">UTC 观测时间</label>
+          <input id="time-input" class="time-input" type="datetime-local" step="1" />
+          <div class="time-actions">
+            <button id="play-toggle" class="button button-primary" type="button">
+              <svg id="play-icon" viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M7 5v10M13 5v10"></path>
+              </svg>
+              <span id="play-label">暂停</span>
+            </button>
+            <div class="select-wrap rate-select">
+              <select id="rate-select" aria-label="时间流速">
+                <option value="-86400">−1 天 / 秒</option>
+                <option value="-3600">−1 小时 / 秒</option>
+                <option value="-60">−1 分钟 / 秒</option>
+                <option value="-1">−1×</option>
+                <option value="1" selected>实时 1×</option>
+                <option value="60">60×</option>
+                <option value="3600">1 小时 / 秒</option>
+                <option value="86400">1 天 / 秒</option>
+                <option value="604800">1 周 / 秒</option>
+              </select>
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4"></path></svg>
+            </div>
+            <button id="now-button" class="button button-quiet" type="button">现在</button>
+          </div>
+          <p id="local-time" class="time-readout">—</p>
+        </section>
+
+        <section class="control-section">
+          <h2><span class="section-index">03</span>天空图层</h2>
+          <div class="toggle-grid">
+            <label class="toggle-row"
+              ><span>中国星官</span><input id="chinese-toggle" type="checkbox" checked /><span
+                class="switch"
+                aria-hidden="true"
+              ></span
+            ></label>
+            <label class="toggle-row"
+              ><span>西方星座</span><input id="modern-toggle" type="checkbox" /><span
+                class="switch"
+                aria-hidden="true"
+              ></span
+            ></label>
+            <label class="toggle-row"
+              ><span>地平网格</span><input id="horizontal-toggle" type="checkbox" /><span
+                class="switch"
+                aria-hidden="true"
+              ></span
+            ></label>
+            <label class="toggle-row"
+              ><span>赤道网格</span><input id="equatorial-toggle" type="checkbox" /><span
+                class="switch"
+                aria-hidden="true"
+              ></span
+            ></label>
+            <label class="toggle-row"
+              ><span>银河背景</span><input id="hips-toggle" type="checkbox" checked /><span
+                class="switch"
+                aria-hidden="true"
+              ></span
+            ></label>
+            <label class="toggle-row"
+              ><span>天体名称</span><input id="labels-toggle" type="checkbox" checked /><span
+                class="switch"
+                aria-hidden="true"
+              ></span
+            ></label>
+          </div>
+        </section>
+
+        <section class="control-section atmosphere-section">
+          <div class="section-title-row">
+            <h2><span class="section-index">04</span>大气浓度</h2>
+            <output id="atmosphere-value" for="atmosphere-input">32%</output>
+          </div>
+          <input
+            id="atmosphere-input"
+            class="range-input"
+            type="range"
+            min="0"
+            max="100"
+            value="32"
+          />
+          <div class="range-labels"><span>清澈太空</span><span>浓厚大气</span></div>
+        </section>
+
+        <div class="panel-help">
+          <span class="mouse-icon" aria-hidden="true"></span
+          ><span>拖拽转动天球 · 滚轮或双指缩放<br />点击天体查看详细信息</span>
+        </div>
+      </aside>
+
+      <section id="info-card" class="info-card" aria-label="天体信息" hidden>
+        <div class="info-heading">
+          <div>
+            <span id="info-type" class="eyebrow">恒星</span>
+            <h2 id="info-name">—</h2>
+            <p id="info-catalog">—</p>
+          </div>
+          <button id="info-close" class="icon-button" type="button" aria-label="关闭天体信息">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg>
+          </button>
+        </div>
+        <dl id="info-details" class="info-details"></dl>
+      </section>
+
+      <div class="view-readout" aria-live="off">
+        <span id="view-direction">方位 180.0° · 高度 30.0°</span
+        ><span class="readout-divider"></span><span id="view-fov">视场 75.0°</span>
+      </div>
+      <div id="fps-readout" class="fps-readout" hidden>—</div>
+
+      <footer class="site-footer">
+        <span>真实星表 · 立体投影 · 本地天文计算</span>
+        <button id="license-button" class="footer-link" type="button">数据与许可</button>
+        <span class="footer-sources"
+          >Tycho-2 <b>CC BY-NC 3.0 IGO</b><i>·</i> Stellarium <b>CC BY-SA 4.0</b><i>·</i> DSS2 HiPS
+          <b>ODbL 1.0</b></span
+        >
+      </footer>
+
+      <dialog id="license-dialog" class="license-dialog">
+        <div class="dialog-heading">
+          <div>
+            <span class="eyebrow">OPEN DATA</span>
+            <h2>数据来源与许可</h2>
+          </div>
+          <button id="license-close" class="icon-button" type="button" aria-label="关闭许可说明">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg>
+          </button>
+        </div>
+        <div class="license-content">
+          <section>
+            <h3>Tycho-2 Catalogue · I/259</h3>
+            <p>
+              约 254 万颗恒星的位置、自行、测光和 HIP/TYC 编号，由 CDS/VizieR 分发。许可为
+              <strong>CC BY-NC 3.0 IGO</strong>，含非商业限制。Høg 等，2000，A&amp;A 355, L27。
+            </p>
+            <a
+              href="https://cdsarc.cds.unistra.fr/viz-bin/cat/I/259"
+              target="_blank"
+              rel="noopener noreferrer"
+              >查看星表与许可</a
+            >
+          </section>
+          <section>
+            <h3>Stellarium Sky Cultures</h3>
+            <p>
+              西方星座、中国星官、三垣二十八宿连线与星名来自 Stellarium modern / chinese
+              数据。文本和数据采用 <strong>CC BY-SA 4.0</strong>；中国星官由 Stellarium 团队及 Sun
+              Shuwei 等贡献者整理。
+            </p>
+            <a
+              href="https://github.com/Stellarium/stellarium/tree/master/skycultures"
+              target="_blank"
+              rel="noopener noreferrer"
+              >查看数据与署名</a
+            >
+          </section>
+          <section>
+            <h3>DSS2 Color · CDS HiPS</h3>
+            <p>
+              银河背景为 Digitized Sky Survey 彩色合成，经 CDS 进行 HEALPix/HiPS 处理。HiPS
+              数据许可为 <strong>ODbL 1.0</strong>。署名：DSS / STScI/NASA、Caltech、AAO、UK
+              Schmidt、ROE、CNRS/Unistra、CDS。
+            </p>
+            <a
+              href="https://alasky.cds.unistra.fr/DSS/DSSColor/properties"
+              target="_blank"
+              rel="noopener noreferrer"
+              >查看 HiPS 元数据</a
+            >
+          </section>
+          <p class="license-note">
+            代码采用 MIT 许可。各数据集保留其独立许可；本项目的代码许可不覆盖上述数据。B−V 色指数由
+            Tycho BT/VT 近似换算。
+          </p>
+        </div>
+      </dialog>
+
+      <div id="loading-screen" class="loading-screen" role="status">
+        <div class="loading-orbit" aria-hidden="true"><span></span><i></i></div>
+        <span class="eyebrow">XINGTU OBSERVATORY</span>
+        <h2>正在展开天球</h2>
+        <p id="loading-message">读取星表目录…</p>
+        <div class="loading-track"><span id="loading-progress"></span></div>
+      </div>
+      <div id="toast" class="toast" role="status" hidden></div>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

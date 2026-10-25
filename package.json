@@ -1,0 +1,44 @@
+{
+  "name": "xingtu",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.6.0",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint . --max-warnings=0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "data:download": "tsx scripts/download-data.ts",
+    "data:stars": "tsx scripts/build-stars.ts",
+    "data:constellations": "tsx scripts/build-constellations.ts",
+    "data:build": "pnpm data:stars && pnpm data:constellations"
+  },
+  "dependencies": {
+    "astronomy-engine": "2.1.19",
+    "healpixjs": "2.0.0",
+    "three": "0.186.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.1",
+    "@types/node": "22.19.0",
+    "@types/three": "0.186.0",
+    "eslint": "9.39.1",
+    "eslint-config-prettier": "10.1.8",
+    "globals": "16.5.0",
+    "prettier": "3.6.2",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.46.4",
+    "vite": "7.2.2",
+    "vitest": "3.2.4"
+  }
+}

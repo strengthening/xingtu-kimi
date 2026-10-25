@@ -1,0 +1,8 @@
+PROMPT.md
+AGENTS.md
+pnpm-lock.yaml
+node_modules/
+dist/
+coverage/
+data/raw/
+public/data/
