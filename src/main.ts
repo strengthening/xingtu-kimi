@@ -1,6 +1,7 @@
 import './styles.css';
 import { createObservationFrame, horizontalToWorld } from './astro/coordinates.ts';
 import { SimulationClock } from './astro/time.ts';
+import { HipsClient } from './data/hips-client.ts';
 import { StarCatalog } from './data/star-catalog.ts';
 import { SkyRenderer } from './render/sky-renderer.ts';
 import { requiredElement } from './ui/dom.ts';
@@ -19,6 +20,8 @@ const atmosphereInput = requiredElement<HTMLInputElement>('atmosphere-input');
 const atmosphereValue = requiredElement<HTMLOutputElement>('atmosphere-value');
 const horizontalToggle = requiredElement<HTMLInputElement>('horizontal-toggle');
 const equatorialToggle = requiredElement<HTMLInputElement>('equatorial-toggle');
+const hipsToggle = requiredElement<HTMLInputElement>('hips-toggle');
+const labelsToggle = requiredElement<HTMLInputElement>('labels-toggle');
 const panelToggle = requiredElement<HTMLButtonElement>('panel-toggle');
 const controlPanel = requiredElement('control-panel');
 const clock = new SimulationClock();
@@ -26,6 +29,7 @@ let disposeApplication = () => undefined;
 
 async function bootstrap(): Promise<void> {
   const catalog = new StarCatalog();
+  const hips = new HipsClient();
   const renderer = new SkyRenderer(canvas, catalog);
   const labels = new LabelOverlay(requiredElement('labels'));
   let frameDirty = true;
@@ -35,6 +39,7 @@ async function bootstrap(): Promise<void> {
   let animationFrame = 0;
   let loadingTimer = 0;
   let disposed = false;
+  let hipsPromise: Promise<void> | undefined;
 
   const reset = (): void => renderer.view.reset();
   resetView.addEventListener('click', reset);
@@ -58,6 +63,30 @@ async function bootstrap(): Promise<void> {
   horizontalToggle.addEventListener('change', updateGrids);
   equatorialToggle.addEventListener('change', updateGrids);
   updateGrids();
+
+  const syncHips = (): void => {
+    renderer.background.setSurveyEnabled(hipsToggle.checked);
+    if (!hipsToggle.checked || hipsPromise) return;
+    statusText.textContent = '连接 DSS2 HiPS 全天背景…';
+    hipsPromise = hips
+      .load()
+      .then((survey) => {
+        if (disposed) return;
+        renderer.background.setSurvey(survey);
+        if (hipsToggle.checked)
+          statusText.textContent = `${survey.properties.title} · 全天背景已就绪`;
+      })
+      .catch((error: unknown) => {
+        hipsPromise = undefined;
+        if (disposed || (error instanceof DOMException && error.name === 'AbortError')) return;
+        const message = error instanceof Error ? error.message : String(error);
+        statusText.textContent = `${message} · 已保留真实星图`;
+      });
+  };
+  hips.onProgress = (loaded, total) => {
+    if (hipsToggle.checked) statusText.textContent = `DSS2 HiPS · 载入切片 ${loaded}/${total}`;
+  };
+  hipsToggle.addEventListener('change', syncHips);
 
   catalog.onProgress = ({ pending, loadedStars, totalStars }) => {
     statusText.textContent =
@@ -84,8 +113,10 @@ async function bootstrap(): Promise<void> {
     atmosphereInput.removeEventListener('input', updateAtmosphere);
     horizontalToggle.removeEventListener('change', updateGrids);
     equatorialToggle.removeEventListener('change', updateGrids);
+    hipsToggle.removeEventListener('change', syncHips);
     controls.dispose();
     labels.dispose();
+    hips.dispose();
     renderer.dispose();
     catalog.dispose();
   };
@@ -105,6 +136,7 @@ async function bootstrap(): Promise<void> {
     }, 550);
     requiredElement('sky-status').classList.remove('error');
     statusText.textContent = `Tycho-2 · ${catalog.manifest.totalStars.toLocaleString()} 颗真实恒星`;
+    syncHips();
 
     let lastFrameUpdate = -Infinity;
     let lastReadoutUpdate = -Infinity;
@@ -130,7 +162,20 @@ async function bootstrap(): Promise<void> {
           const point = renderer.project(horizontalToWorld(azimuth, 1.5));
           return { ...label, ...point, priority: 100, collide: false };
         });
-        labels.update(cardinals);
+        const bodyLabels: LabelRequest[] = labelsToggle.checked
+          ? renderer.solarBodies.map((body, index) => {
+              const point = renderer.project(body.worldDirection);
+              return {
+                id: `solar-${body.english}`,
+                text: body.name,
+                ...point,
+                visible: point.visible && body.horizontal.altitude > -0.5,
+                className: 'sky-label planet',
+                priority: 90 - index,
+              };
+            })
+          : [];
+        labels.update([...cardinals, ...bodyLabels]);
         lastReadoutUpdate = realTime;
       }
       animationFrame = requestAnimationFrame(animate);

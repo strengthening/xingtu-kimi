@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   atmosphericTransmission,
+  daylightStrength,
   moonlightStrength,
   relativeAirmass,
 } from '../src/astro/atmosphere.ts';
@@ -44,6 +45,15 @@ describe('atmosphere', () => {
     expect(atmosphericTransmission(90, 0)).toBe(1);
     expect(atmosphericTransmission(10, 0.5)).toBeLessThan(atmosphericTransmission(60, 0.5));
     expect(atmosphericTransmission(-1, 1)).toBe(0);
+  });
+
+  it('ties daylight to solar altitude and atmosphere density', () => {
+    expect(daylightStrength(30, 0)).toBe(0);
+    expect(daylightStrength(-20, 1)).toBe(0);
+    expect(daylightStrength(30, 1)).toBe(1);
+    expect(daylightStrength(30, 0.32)).toBeCloseTo(0.32, 8);
+    expect(daylightStrength(-6, 1)).toBeGreaterThan(0);
+    expect(daylightStrength(-6, 1)).toBeLessThan(1);
   });
 
   it('ties moonlight to phase, altitude, and atmosphere density', () => {

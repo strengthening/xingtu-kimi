@@ -11,7 +11,11 @@ export function createSkyUniforms() {
     uAspect: { value: 1 },
     uFov: { value: 75 },
     uPixelRatio: { value: 1 },
+    uViewportWidth: { value: 1 },
+    uViewportHeight: { value: 1 },
     uAtmosphere: { value: 0.32 },
+    uDaylight: { value: 0 },
+    uMoonlight: { value: 0 },
   };
 }
 

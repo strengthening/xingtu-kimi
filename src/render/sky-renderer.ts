@@ -1,10 +1,15 @@
+import { Body } from 'astronomy-engine';
 import * as THREE from 'three';
+import { daylightStrength, moonlightStrength } from '../astro/atmosphere.ts';
 import type { ObservationFrame } from '../astro/coordinates.ts';
+import { computeSolarBodies, type SolarBodyPosition } from '../astro/ephemeris.ts';
 import { stereographicScale } from '../astro/projection.ts';
 import type { Vec3 } from '../astro/math.ts';
 import type { StarCatalog } from '../data/star-catalog.ts';
 import { createSkyUniforms } from './sky-uniforms.ts';
 import { EnvironmentLayer } from './environment-layer.ts';
+import { SkyBackgroundLayer } from './sky-background-layer.ts';
+import { SolarSystemLayer } from './solar-system-layer.ts';
 import { StarLayer } from './star-layer.ts';
 import { ViewController } from './view-controller.ts';
 
@@ -14,12 +19,16 @@ export class SkyRenderer {
   readonly view: ViewController;
   readonly stars: StarLayer;
   readonly environment: EnvironmentLayer;
+  readonly background: SkyBackgroundLayer;
+  readonly solarSystem: SolarSystemLayer;
   readonly uniforms = createSkyUniforms();
+  solarBodies: SolarBodyPosition[] = [];
   onContextStatus: ((available: boolean) => void) | undefined;
 
   private readonly renderer: THREE.WebGLRenderer;
   private readonly resizeObserver: ResizeObserver;
   private aspect = 1;
+  private lastFrame: ObservationFrame | undefined;
 
   constructor(
     readonly canvas: HTMLCanvasElement,
@@ -37,7 +46,14 @@ export class SkyRenderer {
     this.view = new ViewController(canvas);
     this.stars = new StarLayer(catalog, this.uniforms, this.view);
     this.environment = new EnvironmentLayer(this.uniforms);
-    this.scene.add(this.environment.group, this.stars.group);
+    this.background = new SkyBackgroundLayer(this.uniforms);
+    this.solarSystem = new SolarSystemLayer(this.uniforms);
+    this.scene.add(
+      this.background.mesh,
+      this.environment.group,
+      this.stars.group,
+      this.solarSystem.mesh,
+    );
     this.resizeObserver = new ResizeObserver(this.resize);
     this.resizeObserver.observe(canvas);
     canvas.addEventListener('webglcontextlost', this.contextLost);
@@ -58,12 +74,19 @@ export class SkyRenderer {
     this.uniforms.uFovScale.value = stereographicScale(this.view.fov);
     this.uniforms.uAspect.value = this.aspect;
     this.uniforms.uFov.value = this.view.fov;
+    if (this.lastFrame !== frame) {
+      this.lastFrame = frame;
+      this.solarBodies = computeSolarBodies(frame);
+      this.solarSystem.update(this.solarBodies, frame);
+      this.updateSkyLight();
+    }
     this.stars.sync(frame, this.aspect);
     this.renderer.render(this.scene, this.camera);
   }
 
   setAtmosphere(density: number): void {
     this.uniforms.uAtmosphere.value = THREE.MathUtils.clamp(density, 0, 1);
+    this.updateSkyLight();
   }
 
   project(worldDirection: Vec3): { x: number; y: number; visible: boolean } {
@@ -75,9 +98,23 @@ export class SkyRenderer {
     this.view.dispose();
     this.stars.dispose();
     this.environment.dispose();
+    this.solarSystem.dispose();
+    this.background.dispose();
     this.canvas.removeEventListener('webglcontextlost', this.contextLost);
     this.canvas.removeEventListener('webglcontextrestored', this.contextRestored);
     this.renderer.dispose();
+  }
+
+  private updateSkyLight(): void {
+    const density = this.uniforms.uAtmosphere.value;
+    const sun = this.solarBodies.find((body) => body.body === Body.Sun);
+    const moon = this.solarBodies.find((body) => body.body === Body.Moon);
+    this.uniforms.uDaylight.value = daylightStrength(sun?.horizontal.altitude ?? -90, density);
+    this.uniforms.uMoonlight.value = moonlightStrength(
+      moon?.horizontal.altitude ?? -90,
+      moon?.phaseFraction ?? 0,
+      density,
+    );
   }
 
   private readonly resize = (): void => {
@@ -86,6 +123,8 @@ export class SkyRenderer {
     const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
     this.aspect = width / height;
     this.uniforms.uPixelRatio.value = pixelRatio;
+    this.uniforms.uViewportWidth.value = width;
+    this.uniforms.uViewportHeight.value = height;
     this.renderer.setPixelRatio(pixelRatio);
     this.renderer.setSize(width, height, false);
     this.camera.aspect = this.aspect;

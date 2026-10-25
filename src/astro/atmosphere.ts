@@ -15,6 +15,10 @@ export function atmosphericTransmission(altitudeDegrees: number, density: number
   return 10 ** (-0.4 * opticalDepth) * smoothstep(-0.5, 0.5, altitudeDegrees);
 }
 
+export function daylightStrength(sunAltitudeDegrees: number, density: number): number {
+  return clamp(density, 0, 1) * smoothstep(-18, 4, sunAltitudeDegrees);
+}
+
 export function moonlightStrength(
   moonAltitudeDegrees: number,
   illuminatedFraction: number,

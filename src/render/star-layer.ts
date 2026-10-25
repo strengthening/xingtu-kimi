@@ -18,6 +18,8 @@ const vertexShader = /* glsl */ `
   attribute float aColorIndex;
   uniform float uFov;
   uniform float uPixelRatio;
+  uniform float uDaylight;
+  uniform float uMoonlight;
   varying vec3 vColor;
   varying float vAlpha;
 
@@ -42,6 +44,10 @@ const vertexShader = /* glsl */ `
     gl_PointSize = radius * 2.0 * uPixelRatio * zoomBoost;
     vColor = stellarColor(aColorIndex);
     vAlpha = transmission * clamp(pow(10.0, -0.12 * (aMagnitude - 1.0)), 0.075, 1.6);
+    float daylight = smoothstep(0.0, 0.35, uDaylight);
+    float faintVisibility = clamp(1.25 - 0.18 * max(aMagnitude, 0.0), 0.0, 1.0);
+    vAlpha *= mix(1.0, faintVisibility, daylight);
+    vAlpha *= 1.0 - clamp(uMoonlight * 3.0, 0.0, 0.35);
     if (worldDirection.y < -0.009 || transmission <= 0.0) {
       gl_Position = vec4(2.0, 2.0, 0.0, 1.0);
       gl_PointSize = 0.0;
