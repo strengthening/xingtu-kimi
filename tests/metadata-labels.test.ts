@@ -90,4 +90,32 @@ describe('sky metadata and labels', () => {
     expect(labels[2]?.text).toBe('角宿');
     expect(labels.every((label) => label.visible)).toBe(true);
   });
+
+  it('derives all three enclosure labels from their wall geometry', () => {
+    const wallNames = ['紫微左垣', '紫微右垣', '太微左垣', '太微右垣', '天市左垣', '天市右垣'];
+    const walls = wallNames.map((native, index) => ({
+      id: `wall-${index}`,
+      english: native,
+      native,
+      segments: [[1, 2]] as Array<[number, number]>,
+      labelHip: 1,
+    }));
+    const enclosureCatalog: ConstellationCatalog = {
+      ...constellations,
+      cultures: { modern: [], chinese: walls },
+      lunarMansions: [],
+    };
+    const labels = createSkyLabels({
+      frame,
+      fov: 75,
+      names: { version: 1, stars: [] },
+      constellations: enclosureCatalog,
+      showModern: false,
+      showChinese: true,
+      project: () => ({ x: 100, y: 100, visible: true }),
+    });
+    const enclosures = labels.filter((label) => label.id.startsWith('chinese-enclosure-'));
+    expect(enclosures.map((label) => label.text)).toEqual(['紫微垣', '太微垣', '天市垣']);
+    expect(enclosures.every((label) => label.visible)).toBe(true);
+  });
 });

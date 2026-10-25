@@ -1,5 +1,5 @@
 import { eqjToWorld, type ObservationFrame } from '../astro/coordinates.ts';
-import type { Vec3 } from '../astro/math.ts';
+import { normalize, type Vec3 } from '../astro/math.ts';
 import { apparentStarDirection } from '../astro/stars.ts';
 import type { ConstellationCatalog, NameCatalog, StarRecord } from '../data/catalog.ts';
 import type { LabelRequest } from './label-overlay.ts';
@@ -13,6 +13,12 @@ interface SkyLabelOptions {
   showChinese: boolean;
   project: (worldDirection: Vec3) => { x: number; y: number; visible: boolean };
 }
+
+const ENCLOSURES: ReadonlyArray<{ name: string; walls: readonly string[] }> = [
+  { name: '紫微垣', walls: ['紫微左垣', '紫微右垣'] },
+  { name: '太微垣', walls: ['太微左垣', '太微右垣'] },
+  { name: '天市垣', walls: ['天市左垣', '天市右垣'] },
+];
 
 export function labelMagnitudeLimit(fov: number): number {
   if (fov >= 45) return 2;
@@ -30,15 +36,14 @@ function apparentRecordWorld(record: StarRecord, frame: ObservationFrame): Vec3 
   );
 }
 
-function projectedLabel(
+function directionLabel(
   id: string,
   text: string,
-  record: StarRecord,
+  worldDirection: Vec3,
   className: string,
   priority: number,
   options: SkyLabelOptions,
 ): LabelRequest {
-  const worldDirection = apparentRecordWorld(record, options.frame);
   const point = options.project(worldDirection);
   return {
     id,
@@ -48,6 +53,61 @@ function projectedLabel(
     className,
     priority,
   };
+}
+
+function projectedLabel(
+  id: string,
+  text: string,
+  record: StarRecord,
+  className: string,
+  priority: number,
+  options: SkyLabelOptions,
+): LabelRequest {
+  return directionLabel(
+    id,
+    text,
+    apparentRecordWorld(record, options.frame),
+    className,
+    priority,
+    options,
+  );
+}
+
+function createEnclosureLabels(options: SkyLabelOptions): LabelRequest[] {
+  const requests: LabelRequest[] = [];
+  for (const enclosure of ENCLOSURES) {
+    const hips = new Set<number>();
+    for (const figure of options.constellations.cultures.chinese) {
+      if (!enclosure.walls.includes(figure.native)) continue;
+      for (const segment of figure.segments) {
+        hips.add(segment[0]);
+        hips.add(segment[1]);
+      }
+    }
+    const center: Vec3 = [0, 0, 0];
+    let count = 0;
+    for (const hip of hips) {
+      const record = options.constellations.stars[String(hip)];
+      if (!record) continue;
+      const direction = apparentRecordWorld(record, options.frame);
+      center[0] += direction[0];
+      center[1] += direction[1];
+      center[2] += direction[2];
+      count += 1;
+    }
+    if (count === 0) continue;
+    requests.push(
+      directionLabel(
+        `chinese-enclosure-${enclosure.name}`,
+        enclosure.name,
+        normalize(center),
+        'sky-label constellation enclosure',
+        18,
+        options,
+      ),
+    );
+  }
+  return requests;
 }
 
 export function createSkyLabels(options: SkyLabelOptions): LabelRequest[] {
@@ -104,6 +164,7 @@ export function createSkyLabels(options: SkyLabelOptions): LabelRequest[] {
   }
 
   if (options.showChinese) {
+    requests.push(...createEnclosureLabels(options));
     for (const mansion of options.constellations.lunarMansions) {
       const record = options.constellations.stars[String(mansion.hip)];
       if (!record) continue;

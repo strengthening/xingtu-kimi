@@ -117,6 +117,11 @@ button:disabled {
   color: rgba(213, 188, 143, 0.82);
   letter-spacing: 0.1em;
 }
+.sky-label.constellation.enclosure {
+  color: rgba(224, 199, 153, 0.88);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+}
 .sky-label.cardinal {
   transform: translate(-50%, -50%);
   color: rgba(167, 205, 217, 0.76);
