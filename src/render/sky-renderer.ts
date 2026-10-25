@@ -4,6 +4,7 @@ import { stereographicScale } from '../astro/projection.ts';
 import type { Vec3 } from '../astro/math.ts';
 import type { StarCatalog } from '../data/star-catalog.ts';
 import { createSkyUniforms } from './sky-uniforms.ts';
+import { EnvironmentLayer } from './environment-layer.ts';
 import { StarLayer } from './star-layer.ts';
 import { ViewController } from './view-controller.ts';
 
@@ -12,6 +13,7 @@ export class SkyRenderer {
   readonly camera = new THREE.PerspectiveCamera(75, 1, 0.001, 10);
   readonly view: ViewController;
   readonly stars: StarLayer;
+  readonly environment: EnvironmentLayer;
   readonly uniforms = createSkyUniforms();
   onContextStatus: ((available: boolean) => void) | undefined;
 
@@ -34,7 +36,8 @@ export class SkyRenderer {
     this.camera.position.set(0, 0, 0);
     this.view = new ViewController(canvas);
     this.stars = new StarLayer(catalog, this.uniforms, this.view);
-    this.scene.add(this.stars.group);
+    this.environment = new EnvironmentLayer(this.uniforms);
+    this.scene.add(this.environment.group, this.stars.group);
     this.resizeObserver = new ResizeObserver(this.resize);
     this.resizeObserver.observe(canvas);
     canvas.addEventListener('webglcontextlost', this.contextLost);
@@ -71,6 +74,7 @@ export class SkyRenderer {
     this.resizeObserver.disconnect();
     this.view.dispose();
     this.stars.dispose();
+    this.environment.dispose();
     this.canvas.removeEventListener('webglcontextlost', this.contextLost);
     this.canvas.removeEventListener('webglcontextrestored', this.contextRestored);
     this.renderer.dispose();
